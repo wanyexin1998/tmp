@@ -1,0 +1,49 @@
+name: Publish Codex film
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".transfer/manifest.json"
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assemble and verify original video
+        shell: bash
+        run: |
+          python - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+          manifest = json.loads(Path(".transfer/manifest.json").read_text())
+          target = Path("dist/CODEX_From_One_Line.mp4")
+          target.parent.mkdir(exist_ok=True)
+          digest = hashlib.sha256()
+          with target.open("wb") as out:
+              for part in manifest["parts"]:
+                  data = Path(part["path"]).read_bytes()
+                  assert len(data) == part["bytes"], part["path"]
+                  assert hashlib.sha256(data).hexdigest() == part["sha256"], part["path"]
+                  out.write(data)
+                  digest.update(data)
+          assert target.stat().st_size == manifest["bytes"]
+          assert digest.hexdigest() == manifest["sha256"]
+          print("Verified original 90-second video:", target.stat().st_size, "bytes")
+          PY
+      - name: Publish downloadable release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="codex-film-90s-20261008"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" dist/CODEX_From_One_Line.mp4 CODEX_Source.zip --clobber
+          else
+            gh release create "$tag" dist/CODEX_From_One_Line.mp4 CODEX_Source.zip --target "$GITHUB_SHA" --title "CODEX · 从一行代码开始 · 90秒" --notes-file RELEASE_NOTES.md
+          fi
+          echo "Original video and source are available in the release." >> "$GITHUB_STEP_SUMMARY"
