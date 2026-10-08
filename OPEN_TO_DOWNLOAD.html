@@ -22,8 +22,7 @@ start.onclick=async()=>{
   if(blob.size!==manifest.bytes||digest!==manifest.sha256)throw Error('完整视频校验不匹配，请重试。');
   if(activeURL)URL.revokeObjectURL(activeURL);activeURL=URL.createObjectURL(blob);film.src=activeURL;film.hidden=false;save.href=activeURL;save.hidden=false;bar.value=1;
   start.hidden=true;statusLine.textContent='原片校验通过。可以播放，或点击「保存 MP4 视频」。';document.body.dataset.ready='true';document.body.dataset.sha256=digest;
- }catch(error){statusLine.textContent='暂时未完成：'+error.message+'
-请确认能访问 GitHub，然后重试。';start.disabled=false;start.textContent='重新加载原片';}
+ }catch(error){statusLine.textContent='暂时未完成：'+error.message+'\n请确认能访问 GitHub，然后重试。';start.disabled=false;start.textContent='重新加载原片';}
 };
 start.click();
 </script></html>
